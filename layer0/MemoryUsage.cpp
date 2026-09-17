@@ -30,7 +30,7 @@ namespace pymol
  */
 size_t memory_usage()
 {
-#ifdef _WEBGL
+#if defined(_WEBGL) || defined(__EMSCRIPTEN__)
   return 0;
 #elif defined(__linux__) || defined(__FreeBSD__)
   size_t vmRSS = 0;
@@ -64,7 +64,7 @@ size_t memory_usage()
  */
 size_t memory_available()
 {
-#ifdef _WEBGL
+#if defined(_WEBGL) || defined(__EMSCRIPTEN__)
   return 0;
 #elif defined(__linux__) || defined(__FreeBSD__)
   size_t memAvail = 0;
