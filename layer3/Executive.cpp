@@ -10181,7 +10181,7 @@ pymol::Result<> ExecutiveLabel(PyMOLGlobals* G, const char* str1,
 }
 
 /*========================================================================*/
-#ifdef _WEBGL
+#if defined(_WEBGL) && !defined(_PYMOL_WEBGL_OPEN)
 #else
 pymol::Result<int> ExecutiveIterate(PyMOLGlobals* G, const char* str1,
     const char* expr, int read_only, int quiet, PyObject* space)
@@ -10198,7 +10198,7 @@ pymol::Result<int> ExecutiveIterate(PyMOLGlobals* G, const char* str1,
     op1.code = OMOP_ALTR;
     op1.i1 = 0;
     op1.i2 = read_only;
-#ifdef _WEBGL
+#if defined(_WEBGL) && !defined(_PYMOL_WEBGL_OPEN)
 #else
     op1.s1 = expr;
     op1.py_ob1 = space;
@@ -10439,7 +10439,7 @@ pymol::Result<int> ExecutiveIterateList(PyMOLGlobals* G, const char* str1,
 }
 
 /*========================================================================*/
-#ifdef _WEBGL
+#if defined(_WEBGL) && !defined(_PYMOL_WEBGL_OPEN)
 #else
 pymol::Result<int> ExecutiveIterateState(PyMOLGlobals* G, int state,
     const char* str1, const char* expr, int read_only, int quiet,
@@ -10473,7 +10473,7 @@ pymol::Result<int> ExecutiveIterateState(PyMOLGlobals* G, int state,
 
     for (state = start_state; state < stop_state; state++) {
       op1.code = OMOP_AlterState;
-#ifdef _WEBGL
+#if defined(_WEBGL) && !defined(_PYMOL_WEBGL_OPEN)
 #else
       op1.s1 = expr;
       op1.py_ob1 = space;

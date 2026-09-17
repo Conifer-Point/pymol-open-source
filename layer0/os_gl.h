@@ -4,6 +4,18 @@
 #include"os_predef.h"
 #include"os_proprietary.h"
 
+/*
+ * Build macros which select the OpenGL flavor:
+ *
+ * PURE_OPENGL_ES_2   OpenGL ES: shader-only rendering, no GLEW (os_gl_es.h)
+ * _WEBGL             with PURE_OPENGL_ES_2: WebGL restrictions (no client-side
+ *                    vertex arrays, no glLineWidth, no threads, ...)
+ * _PYMOL_WEBGL_OPEN  with _WEBGL: build without the parts of the WebPyMOL
+ *                    product which are not in the open-source tree (its
+ *                    Feedback macros, its Python-less iterate/alter, and the
+ *                    embind lookup of Module.ONEBUFFER)
+ */
+
 // hardcode either true, or (x)
 #define ALWAYS_IMMEDIATE_OR(x) true
 

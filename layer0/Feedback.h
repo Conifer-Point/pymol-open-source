@@ -263,7 +263,7 @@ typedef char FeedbackLineType[FEEDBACK_MAX_OUTPUT];
  * variable arguments.
 */
 
-#ifdef _WEBGL
+#if defined(_WEBGL) && !defined(_PYMOL_WEBGL_OPEN)
 #else
 
 #define PRINTFB(G,sysmod,mask) \
