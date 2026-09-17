@@ -7,6 +7,7 @@
 # define GLEW_EXT_geometry_shader4 false
 # define GLEW_ARB_tessellation_shader false
 # define GLEW_ARB_gpu_shader5 false
+# define GLEW_VERSION_3_0 false
 # ifdef _WEBGL
 #  include <emscripten/val.h>
 #  define GLEW_EXT_draw_buffers2 !emscripten::val::module_property("ONEBUFFER").as<bool>()
