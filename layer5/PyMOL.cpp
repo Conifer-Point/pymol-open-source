@@ -3251,6 +3251,6 @@ AtomPropertyInfo* PyMOL_GetAtomPropertyInfo(CPyMOL* I, const char* atompropname)
   return &I->AtomPropertyInfos[it->second];
 }
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(_WEBGL)
 }
 #endif
