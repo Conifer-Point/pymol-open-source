@@ -78,6 +78,13 @@ Z* -------------------------------------------------------------------
 #include "MovieScene.h"
 #include "CifFile.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/html5.h>
+#include <exception>
+#include <stdexcept>
+#include <utility>
+#endif
+
 #include "MoleculeExporter.h"
 
 #define tmpSele "_tmp"
@@ -6366,7 +6373,107 @@ static PyObject* CmdMoveOnCurve(PyObject* self, PyObject* args)
   return APIResult(G, result);
 }
 
+#ifdef __EMSCRIPTEN__
+/*
+ * Browser host entry points (Pyodide). PyMOL never creates a GL context
+ * itself; in the browser the host (a JS wrapper) asks for one on a named
+ * <canvas> through emscripten's html5 API. The GL library that implements
+ * these calls lives in the Pyodide main module.
+ *
+ * _webgl_create_context(selector, antialias=False, depth=True, stencil=True,
+ *                       alpha=False, premultiplied_alpha=True,
+ *                       preserve_drawing_buffer=False) -> handle
+ *   Creates a WebGL 2 context on the canvas matched by the CSS selector
+ *   (e.g. "#pymol-canvas"), makes it current and returns its handle (> 0).
+ * _webgl_make_context_current(handle) -> EMSCRIPTEN_RESULT (0 = ok)
+ * _webgl_current_context() -> handle (0 = none)
+ * _webgl_context_lost(handle) -> bool
+ */
+static PyObject* Cmd_WebGLCreateContext(PyObject*, PyObject* args)
+{
+  const char* selector = nullptr;
+  int antialias = 0, depth = 1, stencil = 1, alpha = 0, premultiplied = 1,
+      preserve = 0;
+  if (!PyArg_ParseTuple(args, "s|pppppp", &selector, &antialias, &depth,
+          &stencil, &alpha, &premultiplied, &preserve))
+    return nullptr;
+
+  EmscriptenWebGLContextAttributes attrs;
+  emscripten_webgl_init_context_attributes(&attrs);
+  attrs.majorVersion = 2;
+  attrs.minorVersion = 0;
+  attrs.antialias = antialias;
+  attrs.depth = depth;
+  attrs.stencil = stencil;
+  attrs.alpha = alpha;
+  attrs.premultipliedAlpha = premultiplied;
+  attrs.preserveDrawingBuffer = preserve;
+  attrs.enableExtensionsByDefault = 1;
+
+  auto handle = emscripten_webgl_create_context(selector, &attrs);
+  if (handle <= 0) {
+    PyErr_Format(PyExc_RuntimeError,
+        "emscripten_webgl_create_context(\"%s\") failed: EMSCRIPTEN_RESULT %d",
+        selector, (int) handle);
+    return nullptr;
+  }
+  auto res = emscripten_webgl_make_context_current(handle);
+  if (res != EMSCRIPTEN_RESULT_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError,
+        "emscripten_webgl_make_context_current failed: EMSCRIPTEN_RESULT %d",
+        (int) res);
+    return nullptr;
+  }
+  return PyLong_FromLong((long) handle);
+}
+
+static PyObject* Cmd_WebGLMakeContextCurrent(PyObject*, PyObject* args)
+{
+  long handle = 0;
+  if (!PyArg_ParseTuple(args, "l", &handle))
+    return nullptr;
+  return PyLong_FromLong((long) emscripten_webgl_make_context_current(
+      (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE) handle));
+}
+
+static PyObject* Cmd_WebGLCurrentContext(PyObject*, PyObject*)
+{
+  return PyLong_FromLong((long) emscripten_webgl_get_current_context());
+}
+
+static PyObject* Cmd_WebGLContextLost(PyObject*, PyObject* args)
+{
+  long handle = 0;
+  if (!PyArg_ParseTuple(args, "l", &handle))
+    return nullptr;
+  return PyBool_FromLong(
+      emscripten_is_webgl_context_lost((EMSCRIPTEN_WEBGL_CONTEXT_HANDLE) handle));
+}
+
+/**
+ * Test probe: throws a C++ exception out of a C-API entry point. Proves that
+ * the catch-all thunks (see PyInit__cmd) turn it into a Python RuntimeError
+ * instead of killing the wasm instance.
+ */
+static PyObject* Cmd_WasmThrow(PyObject*, PyObject* args)
+{
+  int kind = 0;
+  if (!PyArg_ParseTuple(args, "|i", &kind))
+    return nullptr;
+  if (kind == 1)
+    throw 42; // not a std::exception
+  throw std::runtime_error("_wasm_throw: test exception");
+}
+#endif
+
 static PyMethodDef Cmd_methods[] = {
+#ifdef __EMSCRIPTEN__
+  {"_webgl_create_context", Cmd_WebGLCreateContext, METH_VARARGS},
+  {"_webgl_make_context_current", Cmd_WebGLMakeContextCurrent, METH_VARARGS},
+  {"_webgl_current_context", Cmd_WebGLCurrentContext, METH_NOARGS},
+  {"_webgl_context_lost", Cmd_WebGLContextLost, METH_VARARGS},
+  {"_wasm_throw", Cmd_WasmThrow, METH_VARARGS},
+#endif
   {"glViewport", Cmd_glViewport, METH_VARARGS},
   {"_new", Cmd_New, METH_VARARGS},
   {"_start", Cmd_Start, METH_VARARGS},
@@ -6674,6 +6781,49 @@ static PyMethodDef Cmd_methods[] = {
   {NULL, nullptr}                  /* sentinel */
 };
 
+#ifdef __EMSCRIPTEN__
+/*
+ * Catch-all at the C-API boundary.
+ *
+ * In Pyodide a C++ exception that escapes a C-API entry point is fatal for
+ * the whole WebAssembly instance ("Pyodide already fatally failed and can no
+ * longer be used"), whereas on the desktop the interpreter merely
+ * terminates. Every method in Cmd_methods is therefore replaced at import
+ * time by a thunk that converts C++ exceptions into a Python RuntimeError.
+ * Done over the table with an index sequence, so the table itself stays
+ * untouched. All entries are METH_VARARGS or METH_NOARGS, i.e. plain
+ * PyCFunction(self, args).
+ */
+namespace {
+
+constexpr std::size_t kNumCmdMethods = sizeof(Cmd_methods) / sizeof(Cmd_methods[0]);
+PyCFunction cmd_unguarded[kNumCmdMethods];
+
+template <std::size_t I> PyObject* cmd_guarded(PyObject* self, PyObject* args)
+{
+  try {
+    return cmd_unguarded[I](self, args);
+  } catch (const std::exception& e) {
+    PyErr_Format(PyExc_RuntimeError, "_cmd.%s: C++ exception: %s",
+        Cmd_methods[I].ml_name, e.what());
+  } catch (...) {
+    PyErr_Format(PyExc_RuntimeError, "_cmd.%s: unknown C++ exception",
+        Cmd_methods[I].ml_name);
+  }
+  return nullptr;
+}
+
+template <std::size_t... Is>
+void cmd_install_guards(std::index_sequence<Is...>)
+{
+  ((cmd_unguarded[Is] = Cmd_methods[Is].ml_meth,
+       Cmd_methods[Is].ml_meth = cmd_unguarded[Is] ? cmd_guarded<Is> : nullptr),
+      ...);
+}
+
+} // namespace
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -6686,6 +6836,13 @@ PyMODINIT_FUNC PyInit__cmd(void)
     "DO NOT USE",
     -1,
     Cmd_methods };
+#ifdef __EMSCRIPTEN__
+  static bool guards_installed = false;
+  if (!guards_installed) {
+    guards_installed = true;
+    cmd_install_guards(std::make_index_sequence<kNumCmdMethods>{});
+  }
+#endif
   return PyModule_Create(&moduledef);
 }
 
