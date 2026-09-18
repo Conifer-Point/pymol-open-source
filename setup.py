@@ -29,6 +29,11 @@ from setuptools.command.install import install
 DEBUG = bool(os.getenv("DEBUG", ""))
 WIN = sys.platform.startswith("win")
 MAC = sys.platform.startswith("darwin")
+# Cross-compiling for Pyodide (`pyodide build`): the host interpreter says
+# "linux", but sysconfig is redirected to the wasm32 target.
+EMSCRIPTEN = sys.platform == "emscripten" or sysconfig.get_platform().startswith(
+    "emscripten"
+)
 
 
 # check for mingw compiler on windows
@@ -201,6 +206,7 @@ class options:
     use_openmp = "no" if MAC else "yes"
     use_vtkm = "no"
     vmd_plugins = True
+    webgl_debug = False
 
 
 parser = argparse.ArgumentParser()
@@ -244,6 +250,12 @@ parser.add_argument(
     type=str2bool,
     help="Disable VMD molfile plugins (libnetcdf dependency)",
 )
+parser.add_argument(
+    "--webgl-debug",
+    dest="webgl_debug",
+    type=str2bool,
+    help="Emscripten only: report GL errors and reached GL stubs (bring-up aid)",
+)
 options, sys.argv[1:] = parser.parse_known_args(namespace=options)
 
 
@@ -280,7 +292,10 @@ def get_prefix_path() -> list[str]:
         if os.path.isdir(sys.prefix):
             paths.append(os.path.normpath(sys.prefix))
 
-    paths += ["/usr"]
+    if not EMSCRIPTEN:
+        # never the host's glibc headers/libs for a wasm32 target; the
+        # emscripten sysroot is passed through PREFIX_PATH instead
+        paths += ["/usr"]
 
     return paths
 
@@ -396,6 +411,8 @@ class build_ext_pymol(build_ext):
         build_args = ["--config", config]
         if not WIN:  # Win /MP flag on compilation level
             cpu_count = os.cpu_count() or 1
+            if EMSCRIPTEN and options.jobs > 0:
+                cpu_count = options.jobs
             build_args += [f"-j{cpu_count}"]
 
         os.chdir(str(build_temp))
@@ -732,13 +749,39 @@ if WIN:
         # TODO: Remove when we move to setup-CMake
         ext_comp_args += ["/std:c++17"]
 
-if not (MAC or WIN):
+if not (MAC or WIN or EMSCRIPTEN):
     libs += [
         "GL",
         "GLEW",
     ] + (options.glut) * [
         "glut",
     ]
+
+if EMSCRIPTEN:
+    # Pyodide side module (WebAssembly). Renders through PyMOL's OpenGL ES /
+    # WebGL path (layer0/os_gl.h); the GL library itself lives in the Pyodide
+    # main module, so nothing GL-related is linked here. libpng and freetype
+    # stay in `libs`: pyodide-build maps them to emscripten's PIC ports.
+    # Header-only deps (glm, msgpack-c, mmtf-cpp) and the emscripten sysroot
+    # (freetype2 headers) are found through PREFIX_PATH as usual.
+    def_macros += [
+        ("PURE_OPENGL_ES_2", None),
+        ("_WEBGL", None),
+        # open-source WebGL build: no WebPyMOL product glue (os_gl.h)
+        ("_PYMOL_WEBGL_OPEN", None),
+        # the only TrueType face compiled into a _WEBGL build (Text.cpp)
+        ("_WEBGL_INCLUDE_DEFAULT_FONT", None),
+        ("GLM_FORCE_PURE", None),
+        # no threads in this build: keeps pthread symbols out of the module
+        ("POCKETFFT_NO_MULTITHREADING", None),
+    ]
+    if options.webgl_debug:
+        def_macros += [
+            # os_gl_es.h: report the first call of every fixed-function stub
+            ("_PYMOL_GLES_TRACE_STUBS", None),
+            # GraphicsUtil.cpp: CheckGLErrorOK() reports instead of staying silent
+            ("_PYMOL_GL_ERROR_REPORT", None),
+        ]
 
 if options.use_vtkm != "no":
     for prefix in prefix_path:
@@ -830,11 +873,13 @@ package_dir = dict(
 
 # Python includes
 inc_dirs.append(sysconfig.get_paths()["include"])
-inc_dirs.append(sysconfig.get_paths()["platinclude"])
+if not EMSCRIPTEN:  # pyodide-build redirects "include" to wasm32, not "platinclude"
+    inc_dirs.append(sysconfig.get_paths()["platinclude"])
 
 champ_inc_dirs = ["contrib/champ"]
 champ_inc_dirs.append(sysconfig.get_paths()["include"])
-champ_inc_dirs.append(sysconfig.get_paths()["platinclude"])
+if not EMSCRIPTEN:
+    champ_inc_dirs.append(sysconfig.get_paths()["platinclude"])
 
 champ_libs = []
 

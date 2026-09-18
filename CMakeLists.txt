@@ -29,3 +29,16 @@ target_link_libraries(${TARGET_NAME}
 )
 
 target_compile_definitions(${TARGET_NAME} PUBLIC ${ALL_DEF})
+
+if(EMSCRIPTEN)
+    # Pyodide side modules must be real shared objects. Under plain `emcmake`
+    # SHARED silently degrades to STATIC; pyodide-build's toolchain file
+    # enables shared libs. Make the decision visible in the build log.
+    get_property(_pymol_shared GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
+    get_target_property(_pymol_type ${TARGET_NAME} TYPE)
+    message(STATUS "emscripten: TARGET_SUPPORTS_SHARED_LIBS=${_pymol_shared} "
+                   "target TYPE=${_pymol_type} toolchain=${CMAKE_TOOLCHAIN_FILE}")
+    if(NOT _pymol_type STREQUAL "SHARED_LIBRARY")
+        message(FATAL_ERROR "${TARGET_NAME} would not be a shared library (use pyodide build)")
+    endif()
+endif()
