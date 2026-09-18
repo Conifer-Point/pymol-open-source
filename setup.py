@@ -771,6 +771,9 @@ if EMSCRIPTEN:
         ("_PYMOL_WEBGL_OPEN", None),
         # the only TrueType face compiled into a _WEBGL build (Text.cpp)
         ("_WEBGL_INCLUDE_DEFAULT_FONT", None),
+        # the host creates a WebGL 2 (OpenGL ES 3.0) context: compile the
+        # shaders as GLSL ES 3.00 (ShaderMgr.cpp, data/shaders/gles3_header.*)
+        ("_PYMOL_GLES3", None),
         ("GLM_FORCE_PURE", None),
         # no threads in this build: keeps pthread symbols out of the module
         ("POCKETFFT_NO_MULTITHREADING", None),
