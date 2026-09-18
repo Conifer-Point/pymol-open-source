@@ -3,6 +3,10 @@
 
 #include<stdio.h>
 
+/* GL_PACK_SWAP_BYTES / GL_PACK_LSB_FIRST (and the UNPACK ones) do not exist in
+ * OpenGL ES: glGetIntegerv leaves the output untouched and glPixelStorei
+ * raises GL_INVALID_ENUM. Byte order is not selectable there anyway. */
+
 void PyMOLReadPixels(GLint x,
                      GLint y,
                      GLsizei width,
@@ -11,20 +15,27 @@ void PyMOLReadPixels(GLint x,
 
   /* special "safe" version of glReadPixels for buggy OpenGL implementations */
 
-  GLint swapbytes, lsbfirst, rowlength;
+  GLint rowlength;
   GLint skiprows, skippixels, alignment;
+#ifndef PURE_OPENGL_ES_2
+  GLint swapbytes, lsbfirst;
+#endif
 
   /* Save current pixel store state. */
+#ifndef PURE_OPENGL_ES_2
   glGetIntegerv(GL_PACK_SWAP_BYTES, &swapbytes);
   glGetIntegerv(GL_PACK_LSB_FIRST, &lsbfirst);
+#endif
   glGetIntegerv(GL_PACK_ROW_LENGTH, &rowlength);
   glGetIntegerv(GL_PACK_SKIP_ROWS, &skiprows);
   glGetIntegerv(GL_PACK_SKIP_PIXELS, &skippixels);
   glGetIntegerv(GL_PACK_ALIGNMENT, &alignment);
 
   /* Set desired pixel store state. */
+#ifndef PURE_OPENGL_ES_2
   glPixelStorei(GL_PACK_SWAP_BYTES, GL_FALSE);
   glPixelStorei(GL_PACK_LSB_FIRST, GL_FALSE);
+#endif
   glPixelStorei(GL_PACK_ROW_LENGTH, 0);
   glPixelStorei(GL_PACK_SKIP_ROWS, 0);
   glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
@@ -45,8 +56,10 @@ void PyMOLReadPixels(GLint x,
   glFinish();
 
   /* and then estore current pixel store state. */
+#ifndef PURE_OPENGL_ES_2
   glPixelStorei(GL_PACK_SWAP_BYTES, swapbytes);
   glPixelStorei(GL_PACK_LSB_FIRST, lsbfirst);
+#endif
   glPixelStorei(GL_PACK_ROW_LENGTH, rowlength);
   glPixelStorei(GL_PACK_SKIP_ROWS, skiprows);
   glPixelStorei(GL_PACK_SKIP_PIXELS, skippixels);
@@ -60,20 +73,27 @@ void PyMOLDrawPixels(GLsizei width,
 
   /* special "safe" version of glDrawPixels for buggy OpenGL implementations */
 
-  GLint swapbytes, lsbfirst, rowlength;
+  GLint rowlength;
   GLint skiprows, skippixels, alignment;
+#ifndef PURE_OPENGL_ES_2
+  GLint swapbytes, lsbfirst;
+#endif
 
   /* Save current pixel store state. */
+#ifndef PURE_OPENGL_ES_2
   glGetIntegerv(GL_UNPACK_SWAP_BYTES, &swapbytes);
   glGetIntegerv(GL_UNPACK_LSB_FIRST, &lsbfirst);
+#endif
   glGetIntegerv(GL_UNPACK_ROW_LENGTH, &rowlength);
   glGetIntegerv(GL_UNPACK_SKIP_ROWS, &skiprows);
   glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &skippixels);
   glGetIntegerv(GL_UNPACK_ALIGNMENT, &alignment);
 
   /* Set desired pixel store state. */
+#ifndef PURE_OPENGL_ES_2
   glPixelStorei(GL_UNPACK_SWAP_BYTES, GL_FALSE);
   glPixelStorei(GL_UNPACK_LSB_FIRST, GL_FALSE);
+#endif
   glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
   glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
   glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -82,8 +102,10 @@ void PyMOLDrawPixels(GLsizei width,
   glDrawPixels(width, height, format, type, pixels);
 
   /* Restore current pixel store state. */
+#ifndef PURE_OPENGL_ES_2
   glPixelStorei(GL_UNPACK_SWAP_BYTES, swapbytes);
   glPixelStorei(GL_UNPACK_LSB_FIRST, lsbfirst);
+#endif
   glPixelStorei(GL_UNPACK_ROW_LENGTH, rowlength);
   glPixelStorei(GL_UNPACK_SKIP_ROWS, skiprows);
   glPixelStorei(GL_UNPACK_SKIP_PIXELS, skippixels);

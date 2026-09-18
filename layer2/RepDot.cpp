@@ -206,10 +206,12 @@ void RepDot::render(RenderInfo * info)
 	  SceneResetNormal(G, true);
         int lighting =
           SettingGet_i(G, I->cs->Setting.get(), I->obj->Setting.get(), cSetting_dot_lighting);
+#ifndef PURE_OPENGL_ES_2
 	if(!lighting) {
 	  if(!info->line_lighting)
 	    glDisable(GL_LIGHTING);
 	}
+#endif
 
 	if(info->width_scale_flag)
 	  glPointSize(I->Width * info->width_scale);
@@ -232,8 +234,10 @@ void RepDot::render(RenderInfo * info)
         }
         glEnd();
 
+#ifndef PURE_OPENGL_ES_2
         if(!lighting)
           glEnable(GL_LIGHTING);
+#endif
       }
     }
   }

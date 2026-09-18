@@ -5174,16 +5174,21 @@ void SceneSetFogUniforms(PyMOLGlobals * G, CShaderPrg * shaderPrg) {
 void SceneSetupGLPicking(PyMOLGlobals * G){
       /* picking mode: we want flat, unshaded, unblended, unsmooth colors */
 
+#ifndef PURE_OPENGL_ES_2
+      // fixed-function state; GL_INVALID_ENUM on OpenGL ES / WebGL
       glDisable(GL_FOG);
       glDisable(GL_COLOR_MATERIAL);
       glDisable(GL_LIGHTING);
       glDisable(GL_LINE_SMOOTH);
+#endif
       glDisable(GL_DITHER);
       glDisable(GL_BLEND);
+#ifndef PURE_OPENGL_ES_2
       glDisable(GL_POLYGON_SMOOTH);
       if(G->Option->multisample)
         glDisable(0x809D);      /* GL_MULTISAMPLE_ARB */
       glShadeModel(GL_FLAT);
+#endif
 }
 
 /*========================================================================*/

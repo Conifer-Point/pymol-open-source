@@ -28,15 +28,20 @@ Z* -------------------------------------------------------------------
 
 static void FontGLUTSave(CFontGLUT * I)
 {
+#ifndef PURE_OPENGL_ES_2
+  // no byte-order pixel store modes in OpenGL ES (GL_INVALID_ENUM)
   glGetIntegerv(GL_UNPACK_SWAP_BYTES, (GLint *) & I->swapbytes);
   glGetIntegerv(GL_UNPACK_LSB_FIRST, (GLint *) & I->lsbfirst);
+#endif
   glGetIntegerv(GL_UNPACK_ROW_LENGTH, (GLint *) & I->rowlength);
   glGetIntegerv(GL_UNPACK_SKIP_ROWS, (GLint *) & I->skiprows);
   glGetIntegerv(GL_UNPACK_SKIP_PIXELS, (GLint *) & I->skippixels);
   glGetIntegerv(GL_UNPACK_ALIGNMENT, (GLint *) & I->alignment);
 
+#ifndef PURE_OPENGL_ES_2
   glPixelStorei(GL_UNPACK_SWAP_BYTES, GL_FALSE);
   glPixelStorei(GL_UNPACK_LSB_FIRST, GL_FALSE);
+#endif
   glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
   glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
   glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -45,8 +50,10 @@ static void FontGLUTSave(CFontGLUT * I)
 
 static void FontGLUTRestore(CFontGLUT * I)
 {
+#ifndef PURE_OPENGL_ES_2
   glPixelStorei(GL_UNPACK_SWAP_BYTES, I->swapbytes);
   glPixelStorei(GL_UNPACK_LSB_FIRST, I->lsbfirst);
+#endif
   glPixelStorei(GL_UNPACK_ROW_LENGTH, I->rowlength);
   glPixelStorei(GL_UNPACK_SKIP_ROWS, I->skiprows);
   glPixelStorei(GL_UNPACK_SKIP_PIXELS, I->skippixels);

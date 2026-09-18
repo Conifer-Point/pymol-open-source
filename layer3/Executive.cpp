@@ -8273,8 +8273,11 @@ static void ExecutiveRenderIndicatorCGOGLRaster(
   shaderPrg = G->ShaderMgr->Enable_IndicatorShader();
   if (!shaderPrg)
     return;
+#ifndef PURE_OPENGL_ES_2
+  // always on in OpenGL ES; GL_INVALID_ENUM there
   glEnable(GL_POINT_SPRITE);
   glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+#endif
   shaderPrg->SetLightingEnabled(0);
   shaderPrg->SetAttrib4fLocation("a_Color", 1.f, 1.f, 1.f, 1.f);
   shaderPrg->Set1f("g_pointSize", DIP2PIXEL(I->selectorTextureSize));
@@ -8290,8 +8293,10 @@ static void ExecutiveRenderIndicatorCGOGLRaster(
   CGORender(selIndicatorsCGO, nullptr, nullptr, nullptr, nullptr, nullptr);
   if (no_depth)
     glEnable(GL_DEPTH_TEST);
+#ifndef PURE_OPENGL_ES_2
   glDisable(GL_VERTEX_PROGRAM_POINT_SIZE);
   glDisable(GL_POINT_SPRITE);
+#endif
   shaderPrg->Disable();
 }
 

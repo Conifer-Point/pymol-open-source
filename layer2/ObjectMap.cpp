@@ -1927,7 +1927,9 @@ void ObjectMap::render(RenderInfo * info)
                 if(gradients) {
                   raw_gradient = (float *) gradients->data.data();
                 } else {
+#ifndef PURE_OPENGL_ES_2
                   glDisable(GL_LIGHTING);
+#endif
                 }
                 {
                   int ramped = ColorCheckRamped(G, I->Color);
@@ -1936,7 +1938,9 @@ void ObjectMap::render(RenderInfo * info)
                   float gt[3];
 
                   glPointSize(width);
+#ifndef PURE_OPENGL_ES_2
                   glDisable(GL_POINT_SMOOTH);
+#endif
                   glBegin(GL_POINTS);
                   ObjectUseColor(I);
                   for(a = 0; a < cnt; a++) {
@@ -1968,7 +1972,9 @@ void ObjectMap::render(RenderInfo * info)
                       raw_gradient += 3;
                   }
                   glEnd();
+#ifndef PURE_OPENGL_ES_2
                 glEnable(GL_POINT_SMOOTH);
+#endif
                 }
               }
             }

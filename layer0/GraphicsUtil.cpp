@@ -36,7 +36,9 @@ bool CheckGLErrorOK(PyMOLGlobals* G, std::string_view errString)
 {
   GLenum err;
   if ((err = glGetError()) != 0) {
-#ifdef _WEBGL
+    // _WEBGL builds are silent unless _PYMOL_GL_ERROR_REPORT is defined
+    // (setup.py --webgl-debug=true)
+#if defined(_WEBGL) && !defined(_PYMOL_GL_ERROR_REPORT)
     print_trace();
 #else
     if (G) {

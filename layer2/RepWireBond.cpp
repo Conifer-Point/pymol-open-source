@@ -295,8 +295,10 @@ void RepWireBondRenderImmediate(CoordSet * cs, RenderInfo * info)
       glLineWidth(line_width);
 
     SceneResetNormal(G, true);
+#ifndef PURE_OPENGL_ES_2
     if(!info->line_lighting)
       glDisable(GL_LIGHTING);
+#endif
     glBegin(GL_LINES);
     {
       int a;
@@ -352,7 +354,9 @@ void RepWireBondRenderImmediate(CoordSet * cs, RenderInfo * info)
       }
     }
     glEnd();
+#ifndef PURE_OPENGL_ES_2
     glEnable(GL_LIGHTING);
+#endif
     if(!active)
       cs->Active[cRepLine] = false;
   }

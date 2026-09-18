@@ -2802,12 +2802,15 @@ void OrthoPushMatrix(PyMOLGlobals* G)
     glTranslatef(0.33F, 0.33F, 0.0F); /* this generates better
                                          rasterization on macs */
 
+#ifndef PURE_OPENGL_ES_2
+    // fixed-function state; GL_INVALID_ENUM on OpenGL ES / WebGL
     glDisable(GL_ALPHA_TEST);
     glDisable(GL_LIGHTING);
     glDisable(GL_FOG);
     glDisable(GL_NORMALIZE);
     glDisable(GL_COLOR_MATERIAL);
     glDisable(GL_LINE_SMOOTH);
+#endif
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_DITHER);
