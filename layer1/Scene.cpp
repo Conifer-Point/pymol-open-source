@@ -63,6 +63,9 @@ Z* -------------------------------------------------------------------
 #include "Feedback.h"
 #include "GFXManager.h"
 #include "Util2.h"
+#ifdef PURE_OPENGL_ES_2
+#include "GraphicsUtil.h"
+#endif
 
 #ifdef _PYMOL_OPENVR
 #include"OpenVRMode.h"
@@ -3062,14 +3065,81 @@ static void SceneDrawButtons(Block * block, int draw_for_real , CGO *orthoCGO)
 #endif
 }
 
+#ifdef PURE_OPENGL_ES_2
+/**
+ * OpenGL ES has no glDrawPixels. Draw an RGBA8 image (rows bottom-up, as in
+ * every PyMOL image) as a textured quad that exactly covers `rect` (window
+ * pixels). The "copy" program draws a unit quad (a_Vertex in clip space)
+ * across the whole viewport and samples colorTex at (1 + xy) / 2, so setting
+ * the viewport to `rect` positions the image, and the texture origin (first
+ * row at the bottom) matches glDrawPixels. This is how the ray-traced / png
+ * image overlay reaches the screen in an ES build.
+ */
+static void SceneDrawPixelsES(
+    PyMOLGlobals* G, const Rect2D& rect, const unsigned char* buffer)
+{
+  if (!rect.extent.width || !rect.extent.height)
+    return;
+  auto* shaderPrg = G->ShaderMgr->GetShaderPrg("copy");
+  if (!shaderPrg || !shaderPrg->Enable())
+    return;
+
+  GLint viewport[4];
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  GLint unpack_alignment = 4;
+  glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack_alignment);
+  const bool depth_test = glIsEnabled(GL_DEPTH_TEST);
+  const bool blend = glIsEnabled(GL_BLEND);
+
+  // the image as a texture, on the unit the OIT copy pass uses as well
+  constexpr GLuint colorTexUnit = 7;
+  glActiveTexture(GL_TEXTURE0 + colorTexUnit);
+  TextureGL tex(tex::format::RGBA, tex::data_type::UBYTE, tex::filter::NEAREST,
+      tex::filter::NEAREST, tex::wrap::CLAMP_TO_EDGE, tex::wrap::CLAMP_TO_EDGE);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  tex.texture_data_2D(rect.extent.width, rect.extent.height, buffer);
+  shaderPrg->Set1i("colorTex", colorTexUnit);
+
+  // unit quad as a triangle strip; a_Vertex is attribute VERTEX_POS
+  static const float quad[] = {-1.f, -1.f, 0.f, 1.f, -1.f, 0.f, //
+      -1.f, 1.f, 0.f, 1.f, 1.f, 0.f};
+  GLuint vbo = 0;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STREAM_DRAW);
+  glEnableVertexAttribArray(VERTEX_POS);
+  glVertexAttribPointer(VERTEX_POS, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+  glViewport(
+      rect.offset.x, rect.offset.y, rect.extent.width, rect.extent.height);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+  glDisableVertexAttribArray(VERTEX_POS);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glDeleteBuffers(1, &vbo);
+  shaderPrg->Disable(); // also unbinds the texture, active unit back to 0
+  glPixelStorei(GL_UNPACK_ALIGNMENT, unpack_alignment);
+  glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+  if (depth_test)
+    glEnable(GL_DEPTH_TEST);
+  if (blend)
+    glEnable(GL_BLEND);
+  CheckGLErrorOK(G, "SceneDrawPixelsES failed");
+}
+#endif
+
 // TODO: Replace with ShaderMgr::drawPixelsTo
 static void RendererWritePixelsTo(
     PyMOLGlobals* G, const Rect2D& rect, unsigned char* buffer)
 {
-#ifndef PURE_OPENGL_ES_2
+#ifdef PURE_OPENGL_ES_2
+  SceneDrawPixelsES(G, rect, buffer);
+#else
   glRasterPos3i(rect.offset.x, rect.offset.y, -10);
-#endif
   PyMOLDrawPixels(rect.extent.width, rect.extent.height, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+#endif
 }
 
 static bool SceneOverlayOversize(

@@ -134,9 +134,11 @@ inline void glTexCoord3fv(const GLfloat*) { PYMOL_GLES_STUB("glTexCoord3fv"); }
  * Raster position (bitmap font text; only used if labels are not textured,
  * i.e. without shaders) and pixel transfer to the framebuffer.
  *
- * NOTE: glDrawPixels() is how PyMOLDrawPixels() copies an image (e.g. the
- * result of "ray") into the viewport. There is no ES implementation of that
- * yet, so such overlays are not displayed in an ES build.
+ * NOTE: glDrawPixels() is how PyMOLDrawPixels() copies an image into the
+ * viewport on desktop GL. The image overlay (e.g. the result of "ray") does
+ * not go through it in an ES build: Scene.cpp draws the image as a textured
+ * quad instead (SceneDrawPixelsES). Only ShaderMgr::drawPixelsTo, which has
+ * no callers, still reaches this stub.
  */
 inline void glRasterPos4fv(const GLfloat*) { PYMOL_GLES_STUB("glRasterPos4fv"); }
 inline void glDrawPixels(GLsizei, GLsizei, GLenum, GLenum, const GLvoid*)

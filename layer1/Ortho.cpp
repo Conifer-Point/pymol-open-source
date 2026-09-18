@@ -1891,10 +1891,12 @@ void OrthoDoDraw(PyMOLGlobals* G, const OrthoDrawInfo& drawInfo)
     auto numOverlayLines = OrthoGetNumberOverlayLines(G);
     auto text = SettingGet<bool>(G, cSetting_text);
 
-#ifdef PURE_OPENGL_ES_2
+#if defined(PURE_OPENGL_ES_2) && !defined(_PYMOL_WEBGL_OPEN)
     // Workaround for now
     shouldRenderScene = true;
 #else
+    // (also the open-source ES build: its cached ray/png image is displayed by
+    // Scene.cpp's textured-quad overlay, so the scene need not be re-rendered)
     if (numOverlayLines || (!text) || drawInfo.renderMode == OrthoRenderMode::VR)
       if (!SceneRenderCached(G))
         shouldRenderScene = true;
