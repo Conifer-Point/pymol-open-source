@@ -19,6 +19,8 @@ Z* -------------------------------------------------------------------
 #include "os_python.h"
 #include "os_std.h"
 
+#include <algorithm>
+
 #include "Base.h"
 #include "CGO.h"
 #include "Color.h"
@@ -591,7 +593,13 @@ static int RepSurfaceCGOGenerate(RepSurface* I, RenderInfo* info)
         float sum[3];
         float matrix[16];
 
+#ifdef PURE_OPENGL_ES_2
+        // no fixed-function matrix stack: PyMOL tracks the modelview matrix
+        // itself (same column-major layout as GL_MODELVIEW_MATRIX)
+        std::copy_n(SceneGetModelViewMatrixPtr(G), 16, matrix);
+#else
         glGetFloatv(GL_MODELVIEW_MATRIX, matrix);
+#endif
 
         if (I->oneColorFlag) {
           t_buf = pymol::malloc<float*>(I->NT * 6);
