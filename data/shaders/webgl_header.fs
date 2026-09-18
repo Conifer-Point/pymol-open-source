@@ -1,6 +1,8 @@
 #ifndef ONE_DRAW_BUFFER
 #ifdef PURE_OPENGL_ES_2
+#ifndef PYMOL_GLES3
 #extension GL_EXT_draw_buffers : require
+#endif
 #endif
 #endif
 

@@ -1,5 +1,7 @@
 #ifdef PYMOL_WEBGL_IOS
+#ifndef PYMOL_GLES3
 #extension GL_EXT_frag_depth : require
+#endif
 #endif
 
 #include webgl_header.fs

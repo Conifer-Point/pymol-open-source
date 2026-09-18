@@ -12,7 +12,9 @@ uniform float gamma;
 uniform float which_pass;  // 0. - first, 1. - second
 #endif
 
+#ifndef PYMOL_GLES3
 #define gl_FragColor gl_FragData[0]
+#endif
 
 float get_weight(float depth, float alpha){
       return alpha * max(1e-2, 3e3 * pow(1. - depth, 3.));  // eq #10
