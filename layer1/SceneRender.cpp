@@ -967,8 +967,9 @@ static void DoRendering(PyMOLGlobals* G, CScene* I, GridInfo* grid, int times,
     bool cont = true;
     bool t_first_pass = true;
     G->ShaderMgr->stereo_draw_buffer_pass = 0;
-    for (auto pass :
-        passes) { /* render opaque, then antialiased, then transparent... */
+    for (std::size_t pass_idx = 0; pass_idx < sizeof(passes) / sizeof(passes[0]);
+         ++pass_idx) {
+      auto pass = passes[pass_idx]; /* render opaque, then antialiased, then transparent... */
       if (!cont) {
         break;
       }
@@ -1100,8 +1101,15 @@ static void DoRendering(PyMOLGlobals* G, CScene* I, GridInfo* grid, int times,
       } // end slot loop
       if (TM3_IS_ONEBUF) {
         if (t_mode_3 && pass == RenderPass::Transparent && t_first_pass) {
-          pass = RenderPass::Antialias;
           t_first_pass = false;
+#ifdef PURE_OPENGL_ES_2
+          // Second OIT draw buffer (revealage): run the transparent pass once
+          // more. Transparent is the last entry of `passes`, so assigning the
+          // loop variable and `continue` cannot repeat it; step the index back.
+          --pass_idx;
+#else
+          pass = RenderPass::Antialias;
+#endif
           continue;
         }
       }
