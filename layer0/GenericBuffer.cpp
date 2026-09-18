@@ -284,6 +284,18 @@ static int tex_format_internal_byte(tex::format f) {
   return tex_lut[(int)f];
 };
 
+#ifdef _PYMOL_GLES3
+// OpenGL ES 3.0 / WebGL 2 require sized internal formats for float textures
+// (the unsized RGBA + FLOAT combination is WebGL 1 / OES_texture_float only).
+// Rendering to them needs EXT_color_buffer_float (OIT, transparency_mode=3).
+static int tex_format_internal_float(tex::format f) {
+  return tex_format_internal_byte(f) == GL_RGB ? GL_RGB32F : GL_RGBA32F;
+};
+
+static int tex_format_internal_half_float(tex::format f) {
+  return tex_format_internal_byte(f) == GL_RGB ? GL_RGB16F : GL_RGBA16F;
+};
+#else
 static int tex_format_internal_float(tex::format f) {
   return tex_format_internal_byte(f);
 };
@@ -291,6 +303,7 @@ static int tex_format_internal_float(tex::format f) {
 static int tex_format_internal_half_float(tex::format f) {
   return tex_format_internal_byte(f);
 };
+#endif
 #else
 static int tex_format_internal_float(tex::format f) {
   using namespace tex;
