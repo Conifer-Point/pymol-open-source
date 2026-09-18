@@ -847,7 +847,12 @@ enum {
   REC_i( 737, label_z_target                          , astate    , 0 ),
   REC_b( 738, session_embeds_data                     , global    , 1 ),
   REC_i( 739, volume_mode                             , global    , 1 ),
+#ifdef PURE_OPENGL_ES_2
+  // OpenGL ES / WebGL clamp glLineWidth to 1 px: draw lines as triangles
+  REC_b( 740, trilines                                , global    , 1 ),
+#else
   REC_b( 740, trilines                                , global    , 0 ),
+#endif
   REC_i( 741, collada_export_lighting                 , global    , 0 ),
   REC_i( 742, collada_geometry_mode                   , global    , 1 ),
   REC_b( 743, precomputed_lighting                    , global    , 0 ),
