@@ -219,6 +219,12 @@ bool TextureIsCharTextured(PyMOLGlobals* G, int char_id, float* extent)
 	    int xoff = 0, yoff = 0;
 	    xoff = I->xpos;
 	    yoff = I->ypos;
+#ifdef PURE_OPENGL_ES_2
+        // a zero-area glyph (e.g. a space) has no pixel buffer; ES/WebGL
+        // rejects glTexSubImage2D with a null pointer (GL_INVALID_VALUE),
+        // desktop GL treats the empty upload as a no-op
+        if (w > 0 && h > 0)
+#endif
         I->texture->texture_subdata_2D(xoff, yoff, w, h, temp_buffer.data());
 #ifdef _WEBGL
               static bool error_flag = false;
