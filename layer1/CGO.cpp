@@ -9644,7 +9644,10 @@ CGO* CGOConvertToLinesShader(const CGO* I, CGO* addTo, bool add_color)
     // need to add a_interpolate attribute
     attrDesc.push_back({"a_interpolate", VertexFormat::UByte, interpOps});
   }
-#ifndef PURE_OPENGL_ES_2
+  // line.vs reads a_line_position whenever gl_VertexID is not available
+  // (gl_VertexID_enabled is only set for desktop GL with EXT_gpu_shader4);
+  // an ES build must therefore supply it too. Without it the attribute is
+  // constant 0 and line.fs computes 0/0, i.e. nothing is drawn.
   {
     attrDesc.push_back({"a_line_position", VertexFormat::UByte});
     AttribDesc* lpdesc = &attrDesc[attrDesc.size() - 1];
@@ -9652,7 +9655,6 @@ CGO* CGOConvertToLinesShader(const CGO* I, CGO* addTo, bool add_color)
     static unsigned char flip_bits[] = {0, 1};
     lpdesc->repeat_value = flip_bits;
   }
-#endif
   if (!add_color) {
     attrDesc.erase(attrDesc.begin() + 1); // a_Color
   }
