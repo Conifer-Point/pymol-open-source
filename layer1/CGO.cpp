@@ -9885,7 +9885,8 @@ CGO* CGOConvertCrossesToLinesShader(
     // need to add a_interpolate attribute
     attrDesc.push_back({"a_interpolate", VertexFormat::UByte, interpOps});
   }
-#ifndef PURE_OPENGL_ES_2
+  // as in CGOConvertToLinesShader: line.vs reads a_line_position whenever
+  // gl_VertexID is not available, so an ES build must supply it too
   {
     attrDesc.push_back({"a_line_position", VertexFormat::UByte});
     AttribDesc* lpdesc = &attrDesc[attrDesc.size() - 1];
@@ -9893,7 +9894,6 @@ CGO* CGOConvertCrossesToLinesShader(
     static unsigned char flip_bits[] = {0, 1};
     lpdesc->repeat_value = flip_bits;
   }
-#endif
   return CGOConvertToShader(
       I, attrDesc, pickDesc, GL_LINES, VertexBufferLayout::Interleaved);
 }
