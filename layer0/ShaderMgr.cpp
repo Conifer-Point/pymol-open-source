@@ -116,6 +116,14 @@ bool CShaderPrg::reload(){
   vs = I->GetShaderSource(vertfile);
   fs = I->GetShaderSource(fragfile);
 
+#ifdef _PYMOL_GLES3
+  // OpenGL ES 3.0 / WebGL 2 contexts compile GLSL ES 3.00. The shader
+  // sources are written in GLSL ES 1.00 syntax; the headers provide the
+  // `#version 300 es` line and the macros which map one to the other.
+  vs.insert(0, I->GetShaderSource("gles3_header.vs"));
+  fs.insert(0, I->GetShaderSource("gles3_header.fs"));
+#endif
+
   WARNING_IF_GLERROR("CShaderPrg::reload begin");
 
   PRINTFB(G, FB_ShaderMgr, FB_Blather)
@@ -605,6 +613,11 @@ void CShaderMgr::Config() {
   m_shaderPreprocessor.setVar("PURE_OPENGL_ES_2", true);
   m_shaderPreprocessor.setVar("PYMOL_WEBGL", true);
   m_shaderPreprocessor.setVar("PYMOL_WEBGL_IOS", true);
+#ifdef _PYMOL_GLES3
+  // OpenGL ES 3.0 / WebGL 2: shaders are compiled as GLSL ES 3.00 (see
+  // CShaderPrg::reload and data/shaders/gles3_header.*)
+  m_shaderPreprocessor.setVar("PYMOL_GLES3", true);
+#endif
 #else
   m_shaderPreprocessor.setVar("gl_VertexID_enabled", GLEW_EXT_gpu_shader4);
 #endif
